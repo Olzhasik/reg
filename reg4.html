@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>QAMAL Registration</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap');
+
+        :root {
+            --bg-color: #1a1029;
+            --form-bg-color: rgba(43, 30, 66, 0.8);
+            --input-bg-color: rgba(0, 0, 0, 0.2);
+            --border-color: rgba(255, 255, 255, 0.2);
+            --text-color: #f0f0f0;
+            --placeholder-color: #8c8c8e;
+            --button-bg-color: #34c759;
+            --button-text-color: #ffffff;
+            --error-color: #ff4d4d;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: linear-gradient(45deg, #3a1c71, #d76d77, #ffaf7b);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .container {
+            width: 100%;
+            max-width: 380px;
+            text-align: center;
+        }
+
+        #registration-form {
+            background-color: var(--form-bg-color);
+            border-radius: 18px;
+            padding: 30px 25px;
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            font-size: 28px;
+            font-weight: 500;
+            margin-top: 0;
+            margin-bottom: 30px;
+        }
+
+        .input-group {
+            margin-bottom: 18px;
+            text-align: left;
+        }
+
+        input {
+            width: 100%;
+            background-color: var(--input-bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 14px 16px;
+            font-size: 16px;
+            color: var(--text-color);
+            box-sizing: border-box;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        input::placeholder {
+            color: var(--placeholder-color);
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--button-bg-color);
+            box-shadow: 0 0 0 3px rgba(52, 199, 89, 0.3);
+        }
+        
+        .error-message {
+            color: var(--error-color);
+            font-size: 13px;
+            margin-top: 6px;
+            min-height: 15px;
+        }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 12px;
+            background-color: var(--button-bg-color);
+            color: var(--button-text-color);
+            font-size: 18px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.1s;
+            margin-top: 10px;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+        
+        #success-message {
+            display: none;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <form id="registration-form" novalidate>
+            <h1>Регистрация</h1>
+
+            <div class="input-group">
+                <input type="text" id="firstName" name="firstName" placeholder="Имя" required>
+                <div class="error-message" id="firstNameError"></div>
+            </div>
+
+            <div class="input-group">
+                <input type="text" id="lastName" name="lastName" placeholder="Фамилия" required>
+                 <div class="error-message" id="lastNameError"></div>
+            </div>
+
+            <div class="input-group">
+                <input type="tel" id="phone" name="phone" placeholder="Телефон" required>
+                 <div class="error-message" id="phoneError"></div>
+            </div>
+
+            <div class="input-group">
+                <input type="email" id="email" name="email" placeholder="Email" required>
+                 <div class="error-message" id="emailError"></div>
+            </div>
+
+            <button type="submit">Зарегистрироваться</button>
+        </form>
+        
+        <div id="success-message">
+            <h1>Спасибо!</h1>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const tg = window.Telegram.WebApp;
+            tg.expand(); // Растягиваем Web App на весь экран
+
+            const form = document.getElementById('registration-form');
+            const successMessage = document.getElementById('success-message');
+            
+            const firstNameInput = document.getElementById('firstName');
+            const lastNameInput = document.getElementById('lastName');
+            const phoneInput = document.getElementById('phone');
+            const emailInput = document.getElementById('email');
+
+            const firstNameError = document.getElementById('firstNameError');
+            const lastNameError = document.getElementById('lastNameError');
+            const phoneError = document.getElementById('phoneError');
+            const emailError = document.getElementById('emailError');
+
+            const webhookUrl = 'https://n8ntest.qamal.org/webhook/reg';
+
+            // Функция для проверки номера телефона (Казахстан)
+            function validatePhone(phone) {
+                // Упрощенный формат для проверки: +7 7xx xxx xxxx или 8 7xx xxx xxxx
+                const phoneRegex = /^(\+7|8)7[0-9]{9}$/;
+                return phoneRegex.test(phone);
+            }
+
+            // Функция для проверки email
+            function validateEmail(email) {
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                return emailRegex.test(email);
+            }
+            
+            // Функция валидации всей формы
+            function validateForm() {
+                let isValid = true;
+                // Сброс ошибок
+                firstNameError.textContent = '';
+                lastNameError.textContent = '';
+                phoneError.textContent = '';
+                emailError.textContent = '';
+
+                if (firstNameInput.value.trim() === '') {
+                    firstNameError.textContent = 'Поле "Имя" обязательно для заполнения.';
+                    isValid = false;
+                }
+                
+                if (lastNameInput.value.trim() === '') {
+                    lastNameError.textContent = 'Поле "Фамилия" обязательно для заполнения.';
+                    isValid = false;
+                }
+
+                if (phoneInput.value.trim() === '') {
+                    phoneError.textContent = 'Поле "Телефон" обязательно для заполнения.';
+                    isValid = false;
+                } else if (!validatePhone(phoneInput.value.trim())) {
+                    phoneError.textContent = 'Введите корректный номер (например, +77071234567).';
+                    isValid = false;
+                }
+
+                if (emailInput.value.trim() === '') {
+                    emailError.textContent = 'Поле "Email" обязательно для заполнения.';
+                    isValid = false;
+                } else if (!validateEmail(emailInput.value.trim())) {
+                    emailError.textContent = 'Введите корректный Email адрес.';
+                    isValid = false;
+                }
+                
+                return isValid;
+            }
+
+
+            form.addEventListener('submit', (event) => {
+                event.preventDefault();
+
+                if (validateForm()) {
+                    const formData = {
+                        firstName: firstNameInput.value.trim(),
+                        lastName: lastNameInput.value.trim(),
+                        phone: phoneInput.value.trim(),
+                        email: emailInput.value.trim()
+                    };
+
+                    fetch(webhookUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(formData)
+                    })
+                    .then(response => {
+                        // Даже если webhook ответил с ошибкой, мы показываем успех пользователю
+                        // Но в консоли можно увидеть проблему
+                        if (!response.ok) {
+                           console.error('Webhook response was not ok.', response.statusText);
+                        }
+                        // Показываем сообщение об успехе
+                        form.style.display = 'none';
+                        successMessage.style.display = 'block';
+
+                        // Закрываем Web App через 1.5 секунды
+                        setTimeout(() => {
+                            tg.close();
+                        }, 15000);
+                    })
+                    .catch(error => {
+                        console.error('Error sending data to webhook:', error);
+                        // Можно показать ошибку пользователю, но для лучшего UX
+                        // можно все равно показать "Спасибо" и закрыть, а ошибку логировать.
+                        form.style.display = 'none';
+                        successMessage.style.display = 'block';
+                        setTimeout(() => {
+                            tg.close();
+                        }, 1500);
+                    });
+                }
+            });
+        });
+    </script>
+
+</body>
+</html>
